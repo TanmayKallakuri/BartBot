@@ -14,19 +14,36 @@ class MessageParser:
     PATTERNS = {
         'greeting': [
             r'^(hi|hello|hey|yo|sup|what\'s up|whats up)',
-            r'^good (morning|afternoon|evening)'
+            r'^good (morning|afternoon|evening)',
+            r'^(hey|hi) there',
+            r'^howdy',
+            r'^greetings'
         ],
         'find_station': [
             r'(nearest|closest|near me) (station|bart)',
             r'where.*station',
-            r'find.*station'
+            r'find.*station',
+            r'(is there|where\'s|wheres) a (station|bart)',
+            r'station (near|close)',
+            r'where can i (catch|get|find) (bart|train)',
+            r'bart near me',
+            r'closest bart'
         ],
         'get_departures': [
             r'(when|what time).*train',
             r'next train',
             r'train.*time',
             r'departures?.*from',
-            r'when.*leaving'
+            r'when.*leaving',
+            r'(show|get|give).*train.*schedule',
+            r'train schedule',
+            r'is there a train',
+            r'(any|are there) trains',
+            r'how long (until|till) (the )?next train',
+            r'when (does|do) trains (leave|depart)',
+            r'what trains are coming',
+            r'upcoming trains',
+            r'train times'
         ],
         'plan_route': [
             r'get (me )?to',
@@ -38,7 +55,17 @@ class MessageParser:
             r'going to',
             r'\bto\b.*\bstation\b',
             r'from.*to',
-            r'need to get to'
+            r'need to get to',
+            r'i (need|want) to (go|get) to',
+            r'can you (help|take) me (to|get to)',
+            r'trying to (get|go) to',
+            r'(i\'m|im) (headed|heading|going) to',
+            r'help me (get|go) to',
+            r'directions? to',
+            r'how (can i|do i) (reach|get to)',
+            r'i (wanna|want to) (visit|go to|get to)',
+            r'take.*to',
+            r'bring me to'
         ],
         'start_trip': [
             r'start trip',
@@ -46,7 +73,10 @@ class MessageParser:
             r'trip mode',
             r'let\'s go',
             r'im ready',
-            r'i\'m ready'
+            r'i\'m ready',
+            r'track me',
+            r'track my trip',
+            r'start tracking'
         ],
         'stop_trip': [
             r'stop trip',
@@ -54,31 +84,54 @@ class MessageParser:
             r'cancel trip',
             r'i\'m here',
             r'im here',
-            r'arrived'
+            r'arrived',
+            r'stop tracking',
+            r'end tracking',
+            r'made it',
+            r'i arrived'
         ],
         'create_profile': [
             r'save (this )?route',
             r'create profile',
             r'save as (\w+)',
-            r'make.*profile'
+            r'make.*profile',
+            r'remember this',
+            r'save (this|it)'
         ],
         'list_profiles': [
             r'(show|list|my) profile',
             r'saved routes',
-            r'my routes'
+            r'my routes',
+            r'what (routes|profiles) do i have',
+            r'(show|display) my (saved|) routes'
         ],
         'help': [
             r'^help',
             r'what can you do',
             r'commands',
-            r'how.*work'
+            r'how.*work',
+            r'what (do you|can you) do',
+            r'(can you )?help me',
+            r'i need help',
+            r'show.*commands',
+            r'how (do i|can i) use',
+            r'what are.*options',
+            r'i\'m lost',
+            r'im lost',
+            r'i don\'t know'
         ],
         'status': [
             r'(any )?delays',
             r'service.*status',
             r'bart.*status',
             r'problems',
-            r'issues'
+            r'issues',
+            r'is bart (running|working|ok)',
+            r'(any|are there) (problems|issues)',
+            r'service.*ok',
+            r'everything (ok|okay|working)',
+            r'status',
+            r'is everything (running|working)'
         ]
     }
     

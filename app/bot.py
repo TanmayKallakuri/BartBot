@@ -106,7 +106,7 @@ class BARTBot:
             return self._handle_status()
         
         else:
-            return self.responses.unknown_command()
+            return self.responses.unknown_command(message)
     
     def _get_or_create_user(self, whatsapp_number: str) -> User:
         """Get or create user in database"""

@@ -54,15 +54,48 @@ Here's what I can do:
 
 Just talk to me naturally - I'll figure it out! 😎"""
     
-    def unknown_command(self) -> str:
-        """Response when don't understand"""
-        return """Hmm, not sure what you mean 🤔
+    def unknown_command(self, message: str = "") -> str:
+        """Response when don't understand, with smart suggestions based on keywords"""
+        message_lower = message.lower()
 
-Try:
-- "Where's the nearest station?"
-- "Get me to [station]"
-- "Next train from [station]"
-- "Start trip"
+        # Provide contextual suggestions based on keywords in message
+        suggestions = []
+
+        # Check for station-related keywords
+        if any(word in message_lower for word in ['station', 'where', 'location', 'find', 'near']):
+            suggestions.append("- 'Where's the nearest station?'")
+            suggestions.append("- 'Find a station near me'")
+
+        # Check for route/travel keywords
+        if any(word in message_lower for word in ['travel', 'commute', 'journey', 'ride', 'transport']):
+            suggestions.append("- 'Get me to [station name]'")
+            suggestions.append("- 'How do I get to Berkeley?'")
+
+        # Check for time/schedule keywords
+        if any(word in message_lower for word in ['time', 'schedule', 'when', 'departure', 'arrival']):
+            suggestions.append("- 'Next train from Embarcadero'")
+            suggestions.append("- 'When do trains leave?'")
+
+        # Check for delay/status keywords
+        if any(word in message_lower for word in ['late', 'delay', 'slow', 'problem', 'issue', 'wrong']):
+            suggestions.append("- 'Any delays?'")
+            suggestions.append("- 'BART status'")
+
+        # If no specific keywords, provide general suggestions
+        if not suggestions:
+            suggestions = [
+                "- 'Where's the nearest station?'",
+                "- 'Get me to [station name]'",
+                "- 'Next train from [station]'",
+                "- 'Any delays?'"
+            ]
+
+        suggestions_text = "\n".join(suggestions[:4])  # Limit to 4 suggestions
+
+        return f"""Hmm, not sure what you mean 🤔
+
+Try asking like:
+{suggestions_text}
 
 Or just say "help" for all commands!"""
     
