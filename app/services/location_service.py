@@ -2,21 +2,27 @@
 Google Maps Service
 Handles location tracking, distance calculations, and geocoding
 """
-import googlemaps
 from typing import Dict, List, Tuple, Optional
 from datetime import datetime
 from config import Config
 from geopy.distance import geodesic
 
+# Try to import googlemaps, but make it optional
+try:
+    import googlemaps
+    GOOGLEMAPS_AVAILABLE = True
+except ImportError:
+    GOOGLEMAPS_AVAILABLE = False
+
 
 class LocationService:
     """Service for Google Maps API and location operations"""
-    
+
     def __init__(self):
         # Initialize Google Maps client
         # Note: Will use API key from config when available
         self.gmaps_client = None
-        if Config.GOOGLE_MAPS_API_KEY:
+        if Config.GOOGLE_MAPS_API_KEY and GOOGLEMAPS_AVAILABLE:
             self.gmaps_client = googlemaps.Client(key=Config.GOOGLE_MAPS_API_KEY)
         
     def calculate_distance(self, point1: Tuple[float, float], point2: Tuple[float, float]) -> Dict:
