@@ -31,6 +31,13 @@ Here's what I can do:
 
 📍 **Find Stations**
 "Where's the nearest station?"
+"Find a bus stop near me"
+"Nearest transit hub"
+
+🚶 **Get Directions**
+"How do I get there?"
+"Show me directions"
+"Guide me to the station"
 
 🚆 **Get Train Times**
 "Next train from Embarcadero"
@@ -52,17 +59,52 @@ Here's what I can do:
 "Any delays?"
 "BART status"
 
-Just talk to me naturally - I'll figure it out! 😎"""
-    
-    def unknown_command(self) -> str:
-        """Response when don't understand"""
-        return """Hmm, not sure what you mean 🤔
+Just talk to me naturally - I'll figure it out! 😎
 
-Try:
-- "Where's the nearest station?"
-- "Get me to [station]"
-- "Next train from [station]"
-- "Start trip"
+💡 Tip: Share your location for personalized directions!"""
+    
+    def unknown_command(self, message: str = "") -> str:
+        """Response when don't understand, with smart suggestions based on keywords"""
+        message_lower = message.lower()
+
+        # Provide contextual suggestions based on keywords in message
+        suggestions = []
+
+        # Check for station-related keywords
+        if any(word in message_lower for word in ['station', 'where', 'location', 'find', 'near']):
+            suggestions.append("- 'Where's the nearest station?'")
+            suggestions.append("- 'Find a station near me'")
+
+        # Check for route/travel keywords
+        if any(word in message_lower for word in ['travel', 'commute', 'journey', 'ride', 'transport']):
+            suggestions.append("- 'Get me to [station name]'")
+            suggestions.append("- 'How do I get to Berkeley?'")
+
+        # Check for time/schedule keywords
+        if any(word in message_lower for word in ['time', 'schedule', 'when', 'departure', 'arrival']):
+            suggestions.append("- 'Next train from Embarcadero'")
+            suggestions.append("- 'When do trains leave?'")
+
+        # Check for delay/status keywords
+        if any(word in message_lower for word in ['late', 'delay', 'slow', 'problem', 'issue', 'wrong']):
+            suggestions.append("- 'Any delays?'")
+            suggestions.append("- 'BART status'")
+
+        # If no specific keywords, provide general suggestions
+        if not suggestions:
+            suggestions = [
+                "- 'Where's the nearest station?'",
+                "- 'Get me to [station name]'",
+                "- 'Next train from [station]'",
+                "- 'Any delays?'"
+            ]
+
+        suggestions_text = "\n".join(suggestions[:4])  # Limit to 4 suggestions
+
+        return f"""Hmm, not sure what you mean 🤔
+
+Try asking like:
+{suggestions_text}
 
 Or just say "help" for all commands!"""
     
@@ -239,8 +281,166 @@ Or just tell me which station you're at!""",
             "no_station": "Couldn't find that station 🤔\n\nTry: 'Embarcadero', 'Berkeley', 'Montgomery', 'Civic Center'",
             "api_error": "BART API is acting up 😕\n\nGive it a sec and try again"
         }
-        
+
         return errors.get(error_type, errors["general"])
+
+    def walking_directions(self, destination_name: str, directions: Dict) -> str:
+        """Format walking directions"""
+        import re
+
+        if not directions:
+            return "Couldn't get directions 😕"
+
+        message = f"🚶 **Walking to {destination_name}**\n\n"
+
+        # Add summary
+        duration = directions.get('duration_minutes', 0)
+        distance_info = directions.get('distance', {})
+        distance_km = distance_info.get('distance_km', 0)
+
+        if distance_km >= 1:
+            dist_str = f"{distance_km} km"
+        else:
+            dist_str = f"{int(distance_info.get('distance_meters', 0))} meters"
+
+        message += f"⏱️ {duration} min ({dist_str})\n\n"
+
+        # Add turn-by-turn steps
+        steps = directions.get('steps', [])
+        if steps:
+            message += "**Directions:**\n"
+            for i, step in enumerate(steps[:8], 1):  # Limit to 8 steps to avoid huge messages
+                # Clean HTML tags from instructions
+                instruction = re.sub(r'<[^>]+>', '', step.get('instruction', ''))
+                message += f"{i}. {instruction} ({step.get('distance', '')})\n"
+
+            if len(steps) > 8:
+                message += f"\n...and {len(steps) - 8} more steps\n"
+
+        # Note if using estimation
+        if directions.get('note'):
+            message += f"\n💡 {directions['note']}"
+
+        return message
+
+    def transit_directions(self, destination_name: str, directions: Dict) -> str:
+        """Format transit directions with bus/train info"""
+        import re
+
+        if not directions:
+            return "Couldn't get transit directions 😕"
+
+        message = f"🚇 **Transit to {destination_name}**\n\n"
+
+        # Add summary
+        duration = directions.get('duration_minutes', 0)
+        distance_info = directions.get('distance', {})
+        distance_km = distance_info.get('distance_km', 0)
+
+        if distance_km >= 1:
+            dist_str = f"{distance_km} km"
+        else:
+            dist_str = f"{int(distance_info.get('distance_meters', 0))} meters"
+
+        message += f"⏱️ {duration} min ({dist_str})\n"
+
+        # Add departure/arrival times if available
+        if directions.get('departure_time'):
+            message += f"🕐 Leave: {directions['departure_time']}\n"
+        if directions.get('arrival_time'):
+            message += f"🕐 Arrive: {directions['arrival_time']}\n"
+
+        message += "\n**Route:**\n"
+
+        # Add transit details
+        transit_details = directions.get('transit_details', [])
+        if transit_details:
+            for i, transit in enumerate(transit_details, 1):
+                transit_type = transit.get('type', 'Transit')
+                line_name = transit.get('line_short_name', '') or transit.get('line_name', '')
+
+                # Use emoji based on type
+                emoji = "🚌" if transit_type == "BUS" else "🚇"
+
+                message += f"\n{emoji} **{line_name}** - {transit.get('headsign', '')}\n"
+                message += f"   Board: {transit.get('departure_stop', '')}\n"
+                message += f"   Exit: {transit.get('arrival_stop', '')} ({transit.get('num_stops', 0)} stops)\n"
+        else:
+            # Show steps without transit details
+            steps = directions.get('steps', [])
+            for i, step in enumerate(steps[:6], 1):
+                instruction = re.sub(r'<[^>]+>', '', step.get('instruction', ''))
+                travel_mode = step.get('travel_mode', '')
+
+                # Add emoji based on travel mode
+                if travel_mode == 'WALKING':
+                    emoji = "🚶"
+                elif travel_mode == 'TRANSIT':
+                    emoji = "🚇"
+                else:
+                    emoji = "➡️"
+
+                message += f"{i}. {emoji} {instruction}\n"
+
+        # Note if using estimation
+        if directions.get('note'):
+            message += f"\n💡 {directions['note']}"
+
+        return message
+
+    def nearby_bus_stops(self, stops: List[Dict]) -> str:
+        """Format nearby bus stops"""
+        if not stops:
+            return "❌ No bus stops found nearby"
+
+        message = "🚌 **Nearby Bus Stops:**\n\n"
+
+        for i, stop in enumerate(stops[:5], 1):  # Show top 5
+            distance = stop['distance']
+            if distance['distance_km'] >= 1:
+                dist_str = f"{distance['distance_km']} km"
+            else:
+                dist_str = f"{int(distance['distance_meters'])} meters"
+
+            message += f"**{i}. {stop['name']}**\n"
+            message += f"   📏 {dist_str} away\n"
+            if stop.get('address'):
+                message += f"   📮 {stop['address']}\n"
+            message += "\n"
+
+        return message
+
+    def nearby_transit_hubs(self, hubs: List[Dict]) -> str:
+        """Format nearby transit hubs"""
+        if not hubs:
+            return "❌ No transit hubs found nearby"
+
+        message = "🚇 **Nearby Transit Hubs:**\n\n"
+
+        for i, hub in enumerate(hubs[:5], 1):  # Show top 5
+            distance = hub['distance']
+            if distance['distance_km'] >= 1:
+                dist_str = f"{distance['distance_km']} km"
+            else:
+                dist_str = f"{int(distance['distance_meters'])} meters"
+
+            # Choose emoji based on type
+            hub_type = hub.get('type', '').lower()
+            if 'bus' in hub_type:
+                emoji = "🚌"
+            elif 'subway' in hub_type or 'train' in hub_type:
+                emoji = "🚇"
+            else:
+                emoji = "🚏"
+
+            message += f"**{i}. {emoji} {hub['name']}**\n"
+            message += f"   Type: {hub.get('type', 'Transit Hub')}\n"
+            message += f"   📏 {dist_str} away\n"
+            if hub.get('address'):
+                message += f"   📮 {hub['address']}\n"
+            message += "\n"
+
+        return message
 
 
 # Singleton instance
