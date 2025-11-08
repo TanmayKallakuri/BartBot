@@ -25,7 +25,10 @@ class Config:
     
     # Google Maps
     GOOGLE_MAPS_API_KEY = os.getenv('GOOGLE_MAPS_API_KEY')
-    
+
+    # OpenAI (for AI-powered message understanding)
+    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+
     # Weather
     OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY')
     OPENWEATHER_BASE_URL = 'https://api.openweathermap.org/data/2.5'
