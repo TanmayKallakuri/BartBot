@@ -104,7 +104,16 @@ class BARTBot:
         
         elif intent == 'status':
             return self._handle_status()
-        
+
+        elif intent == 'get_directions':
+            return self._handle_get_directions(session, location)
+
+        elif intent == 'find_bus_stop':
+            return self._handle_find_bus_stop(location)
+
+        elif intent == 'find_transit':
+            return self._handle_find_transit(location)
+
         else:
             return self.responses.unknown_command(message)
     
@@ -399,6 +408,72 @@ class BARTBot:
         """Handle BART status check"""
         advisories = bart_service.get_advisories()
         return self.responses.service_advisories(advisories)
+
+    def _handle_get_directions(self, session, location: Optional[Tuple[float, float]]) -> str:
+        """Handle request for directions to a station"""
+        if not location:
+            return self.responses.error_message("no_location")
+
+        # Check if user has a planned route or active trip
+        planned_route = session.get_context('planned_route')
+
+        if planned_route:
+            # Get directions to the origin station
+            origin_abbr = planned_route['origin']
+            station_info = bart_service.get_station_info(origin_abbr)
+
+            if not station_info or 'gtfs_latitude' not in station_info:
+                return "Couldn't get directions to that station 😕"
+
+            station_coords = (
+                float(station_info['gtfs_latitude']),
+                float(station_info['gtfs_longitude'])
+            )
+
+            # Get walking directions
+            from app.services.location_service import location_service
+            directions = location_service.get_walking_directions(location, station_coords)
+
+            if directions:
+                return self.responses.walking_directions(station_info['name'], directions)
+            else:
+                return "Couldn't get directions 😕"
+
+        # No planned route - find nearest station and give directions
+        nearest = station_location_service.find_nearest_stations(location, limit=1)
+        if not nearest:
+            return "Couldn't find any stations nearby 😕"
+
+        station = nearest[0]
+        station_coords = (station['latitude'], station['longitude'])
+
+        from app.services.location_service import location_service
+        directions = location_service.get_walking_directions(location, station_coords)
+
+        if directions:
+            return self.responses.walking_directions(station['name'], directions)
+        else:
+            return "Couldn't get directions 😕"
+
+    def _handle_find_bus_stop(self, location: Optional[Tuple[float, float]]) -> str:
+        """Handle finding nearby bus stops"""
+        if not location:
+            return self.responses.error_message("no_location")
+
+        from app.services.location_service import location_service
+        bus_stops = location_service.find_nearby_bus_stops(location, radius_meters=500)
+
+        return self.responses.nearby_bus_stops(bus_stops)
+
+    def _handle_find_transit(self, location: Optional[Tuple[float, float]]) -> str:
+        """Handle finding nearby transit hubs"""
+        if not location:
+            return self.responses.error_message("no_location")
+
+        from app.services.location_service import location_service
+        transit_hubs = location_service.find_nearby_transit_hubs(location, radius_meters=1000)
+
+        return self.responses.nearby_transit_hubs(transit_hubs)
 
 
 # Singleton instance

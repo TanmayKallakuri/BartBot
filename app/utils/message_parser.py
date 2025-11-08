@@ -132,6 +132,33 @@ class MessageParser:
             r'everything (ok|okay|working)',
             r'status',
             r'is everything (running|working)'
+        ],
+        'get_directions': [
+            r'(how do i|how can i) (get|walk|reach) (to|there)',
+            r'(show|give|get)( me)? directions',
+            r'navigate( me| to)?',
+            r'guide me( there| to the)',
+            r'(walking|turn.by.turn) directions',
+            r'take me there',
+            r'how to (walk|get) there',
+            r'(what\'s|whats) the way',
+            r'which way',
+            r'direct me'
+        ],
+        'find_bus_stop': [
+            r'(bus stop|bus station)',
+            r'(nearest|closest|where.*) bus',
+            r'find.*bus',
+            r'where can i (catch|take|get) (a |the )?bus',
+            r'bus near me',
+            r'is there a bus'
+        ],
+        'find_transit': [
+            r'(nearest|closest) (transit|public transport)',
+            r'transit (hub|station|center)',
+            r'public transport',
+            r'where.*transit',
+            r'find transit'
         ]
     }
     
