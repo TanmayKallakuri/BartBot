@@ -1,0 +1,247 @@
+"""
+Bot Response Builder
+Creates conversational, friendly responses
+"""
+from typing import Dict, List, Optional
+from datetime import datetime
+
+
+class ResponseBuilder:
+    """Build conversational bot responses"""
+    
+    def greeting(self, user_name: Optional[str] = None) -> str:
+        """Greeting message"""
+        name_part = f" {user_name}" if user_name else ""
+        
+        greetings = [
+            f"Hey{name_part}! 🤙 What's up?",
+            f"Yo{name_part}! Where you headed?",
+            f"Hey{name_part}! Need help with BART?",
+            f"What's good{name_part}? 🚇"
+        ]
+        
+        import random
+        return random.choice(greetings)
+    
+    def help_message(self) -> str:
+        """Help message with commands"""
+        return """**Hey! I'm BARTBot, your transit buddy 🚇**
+
+Here's what I can do:
+
+📍 **Find Stations**
+"Where's the nearest station?"
+
+🚆 **Get Train Times**
+"Next train from Embarcadero"
+"When's the next train?"
+
+🗺️ **Plan Routes**
+"Get me to Berkeley"
+"Embarcadero to Montgomery"
+
+🚦 **Trip Mode**
+"Start trip" - I'll track you and send alerts
+"Stop trip" - End your journey
+
+💾 **Save Routes**
+"Save this route"
+"My profiles"
+
+⚠️ **Check Status**
+"Any delays?"
+"BART status"
+
+Just talk to me naturally - I'll figure it out! 😎"""
+    
+    def unknown_command(self) -> str:
+        """Response when don't understand"""
+        return """Hmm, not sure what you mean 🤔
+
+Try:
+- "Where's the nearest station?"
+- "Get me to [station]"
+- "Next train from [station]"
+- "Start trip"
+
+Or just say "help" for all commands!"""
+    
+    def nearest_stations(self, stations: List[Dict]) -> str:
+        """Format nearest stations message"""
+        if not stations:
+            return "❌ No BART stations found nearby"
+        
+        message = "📍 **Nearest BART Stations:**\n\n"
+        
+        for i, station in enumerate(stations[:3], 1):
+            distance = station['distance']
+            dist_str = f"{distance['distance_km']} km" if distance['distance_km'] >= 1 else f"{int(distance['distance_meters'])} meters"
+            walk_time = station['walking_time_minutes']
+            
+            message += f"**{i}. {station['name']}**\n"
+            message += f"   📏 {dist_str} away (~{walk_time} min walk)\n"
+            message += f"   📮 {station['address']}\n\n"
+        
+        return message
+    
+    def departures(self, station_name: str, trains: List[Dict]) -> str:
+        """Format departure times"""
+        if not trains:
+            return f"No trains scheduled from {station_name} right now 😕"
+        
+        message = f"🚇 **Next trains from {station_name}:**\n\n"
+        
+        for train in trains[:5]:
+            minutes = train['minutes']
+            if minutes == 'Leaving':
+                time_str = "🔥 **LEAVING NOW**"
+            else:
+                time_str = f"⏱️ {minutes} min"
+            
+            bike_flag = " 🚴" if train.get('bikeflag') else ""
+            
+            message += f"{time_str} → **{train['destination']}**{bike_flag}\n"
+            message += f"   Platform {train['platform']} | {train['length']} cars\n\n"
+        
+        return message
+    
+    def route_info(self, trips: List[Dict]) -> str:
+        """Format route information"""
+        if not trips:
+            return "Couldn't find a route for that 😕"
+        
+        trip = trips[0]  # Show first option
+        
+        message = "🗺️ **Route Info:**\n\n"
+        message += f"🚇 {trip['origin']} → {trip['destination']}\n"
+        message += f"⏱️ **{trip['trip_time']} minutes**\n"
+        message += f"💵 Fare: **${trip['fare']}**\n"
+        message += f"🕐 Departs: {trip['orig_time']}\n"
+        message += f"🕐 Arrives: {trip['dest_time']}\n\n"
+        message += "Wanna start trip mode? I'll keep you posted! 🤙"
+        
+        return message
+    
+    def trip_started(self, destination: str) -> str:
+        """Trip start confirmation"""
+        return f"""✅ **Trip started!**
+
+📍 Heading to: **{destination}**
+
+I got you covered. I'll chill now unless something important comes up 🤙
+
+I'll let you know when you're almost there!"""
+    
+    def trip_stopped(self) -> str:
+        """Trip stop confirmation"""
+        return "✅ Trip ended. Made it! Need anything else? 🎉"
+    
+    def approaching_destination(self, station_name: str) -> str:
+        """Alert when approaching destination"""
+        return f"""🔔 **Heads up!**
+
+Your stop ({station_name}) is next!
+
+Get ready! 🚇"""
+    
+    def get_off_alert(self, station_name: str) -> str:
+        """Urgent get off alert"""
+        return f"""🚨 **THIS IS YOUR STOP!**
+
+Get off now at **{station_name}**! 🚇"""
+    
+    def delay_alert(self, delay_minutes: int) -> str:
+        """Delay notification"""
+        return f"""⚠️ **Heads up!**
+
+There's a **{delay_minutes} min delay** on your route.
+
+Want me to find you another way?"""
+    
+    def profile_saved(self, profile_name: str, route: str) -> str:
+        """Profile creation confirmation"""
+        return f"""✅ **Profile saved!**
+
+**"{profile_name}"**
+Route: {route}
+
+I'll remember this for next time! 💾"""
+    
+    def profile_suggestion(self, route: str, frequency: int) -> str:
+        """Suggest creating a profile"""
+        return f"""💡 **Yo!**
+
+I've noticed you take **{route}** like {frequency} times now.
+
+Want to save this as a profile? Makes life easier 😎
+
+Just say "save this route" or give it a name!"""
+    
+    def profiles_list(self, profiles: List[Dict]) -> str:
+        """List user's saved profiles"""
+        if not profiles:
+            return "You don't have any saved routes yet!\n\nTake a route a few times and I'll suggest saving it 💡"
+        
+        message = "💾 **Your Saved Routes:**\n\n"
+        
+        for i, profile in enumerate(profiles, 1):
+            fav = " ⭐" if profile.get('is_favorite') else ""
+            usage = profile.get('usage_count', 0)
+            
+            message += f"**{i}. {profile['name']}{fav}**\n"
+            message += f"   {profile['start_station']['name']} → {profile['end_station']['name']}\n"
+            message += f"   Used {usage} times\n\n"
+        
+        return message
+    
+    def service_advisories(self, advisories: List[Dict]) -> str:
+        """Format service advisories"""
+        if not advisories:
+            return "✅ No delays or issues! Smooth sailing 🚇✨"
+        
+        message = "⚠️ **Service Advisories:**\n\n"
+        
+        for adv in advisories[:3]:
+            station = adv.get('station', 'System-wide')
+            adv_type = adv.get('type', 'INFO')
+            description = adv.get('description', '')
+            
+            message += f"**{station}** - {adv_type}\n"
+            if description:
+                # Truncate long descriptions
+                desc_short = description[:100] + "..." if len(description) > 100 else description
+                message += f"{desc_short}\n\n"
+        
+        return message
+    
+    def location_permission_request(self) -> str:
+        """Request location permission"""
+        return """📍 **Quick heads up!**
+
+I need location access to:
+- Find nearest stations
+- Track your trip
+- Send "get off" alerts
+
+Your location stays private - I don't share it with anyone.
+
+Cool? 🤙"""
+    
+    def error_message(self, error_type: str = "general") -> str:
+        """Error messages"""
+        errors = {
+            "general": "Oops, something went wrong 😕\n\nTry again or say 'help' for commands",
+            "no_location": """📍 **I need your location for that!**
+
+Tap the **+** button in WhatsApp and select **Location** to share where you are.
+
+Or just tell me which station you're at!""",
+            "no_station": "Couldn't find that station 🤔\n\nTry: 'Embarcadero', 'Berkeley', 'Montgomery', 'Civic Center'",
+            "api_error": "BART API is acting up 😕\n\nGive it a sec and try again"
+        }
+        
+        return errors.get(error_type, errors["general"])
+
+
+# Singleton instance
+response_builder = ResponseBuilder()

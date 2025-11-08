@@ -1,0 +1,11 @@
+# Minimal requirements for BART API testing
+# Install with: pip install -r requirements-minimal.txt
+
+# API Clients
+requests==2.31.0
+
+# Data Processing
+python-dotenv==1.0.0
+
+# Utilities
+geopy==2.4.1

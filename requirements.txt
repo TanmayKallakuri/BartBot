@@ -1,0 +1,29 @@
+# Core Framework
+flask==3.0.0
+flask-cors==4.0.0
+
+# WhatsApp Integration
+twilio==8.11.0
+
+# Database (SQLite for now, PostgreSQL later)
+sqlalchemy==2.0.23
+# Note: psycopg2-binary removed - will install when we need PostgreSQL
+
+# API Clients
+requests==2.31.0
+googlemaps==4.10.0
+
+# Data Processing
+python-dotenv==1.0.0
+pydantic==2.5.2
+
+# Date/Time
+python-dateutil==2.8.2
+pytz==2023.3
+
+# Testing
+pytest==7.4.3
+pytest-mock==3.12.0
+
+# Utilities
+geopy==2.4.1
