@@ -67,7 +67,10 @@ class BARTBot:
         # Handle based on current state and intent
         if session.state == ConversationState.AWAITING_DESTINATION:
             return self._handle_awaiting_destination(session, message, entities)
-        
+
+        elif session.state == ConversationState.AWAITING_ORIGIN:
+            return self._handle_awaiting_origin(session, message, entities)
+
         elif session.state == ConversationState.AWAITING_PROFILE_NAME:
             return self._handle_awaiting_profile_name(session, message, user)
         
@@ -236,21 +239,52 @@ class BARTBot:
     def _handle_awaiting_destination(self, session, message: str, entities: Dict) -> str:
         """Handle when waiting for destination"""
         destination = entities.get('destination') or self.parser.extract_station_from_text(message)
-        
+
         if not destination:
             return "Hmm, couldn't find that station 🤔\n\nTry: 'Embarcadero', 'Berkeley', 'Montgomery'"
-        
-        # Get route
+
+        # Get destination station info
+        dest_info = bart_service.get_station_info(destination)
+        dest_name = dest_info.get('name', destination) if dest_info else destination
+
+        # Check if we have an origin
         origin = session.get_context('origin')
         if origin:
+            # We have both origin and destination, get route
             trips = bart_service.get_route_schedule(origin, destination)
             session.reset()
             return self.responses.route_info(trips)
-        
-        # This shouldn't happen, but just in case
-        session.reset()
-        return "Something went wrong 😕 Try again!"
-    
+
+        # No origin yet, ask for it
+        session.set_state(ConversationState.AWAITING_ORIGIN)
+        session.set_context('destination', destination)
+        return f"Got it, heading to {dest_name}! 🚇\n\nWhere are you starting from?"
+
+    def _handle_awaiting_origin(self, session, message: str, entities: Dict) -> str:
+        """Handle when waiting for origin station"""
+        origin = entities.get('origin') or self.parser.extract_station_from_text(message)
+
+        if not origin:
+            return "Hmm, couldn't find that station 🤔\n\nTry: 'Embarcadero', 'Berkeley', 'Montgomery'"
+
+        # Get destination from context
+        destination = session.get_context('destination')
+
+        if not destination:
+            # This shouldn't happen, but just in case
+            session.reset()
+            return "Something went wrong 😕 Try planning your route again!"
+
+        # Get route
+        try:
+            trips = bart_service.get_route_schedule(origin, destination)
+            session.reset()
+            return self.responses.route_info(trips)
+        except Exception as e:
+            print(f"Error getting route: {e}")
+            session.reset()
+            return "Couldn't find a route between those stations 😕\n\nTry again!"
+
     def _handle_start_trip(
         self,
         session,
