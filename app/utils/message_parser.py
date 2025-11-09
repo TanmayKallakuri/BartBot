@@ -1,15 +1,42 @@
 """
 Message Parser
 Understands user messages and extracts intent and entities
+Hybrid approach: Regex patterns + AI fallback for complex messages
 """
 import re
+import json
 from typing import Dict, Optional, List
 from datetime import datetime
+from config import Config
+
+# Try to import OpenAI, but make it optional
+try:
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
 
 
 class MessageParser:
     """Parse user messages to understand intent"""
-    
+
+    def __init__(self):
+        """Initialize the message parser with optional AI support"""
+        self.openai_client = None
+        self.use_ai = False
+
+        # Initialize OpenAI client if available and configured
+        if OPENAI_AVAILABLE and Config.OPENAI_API_KEY:
+            try:
+                self.openai_client = OpenAI(api_key=Config.OPENAI_API_KEY)
+                self.use_ai = True
+                print("✓ AI-powered understanding enabled (OpenAI)")
+            except Exception as e:
+                print(f"⚠️  OpenAI initialization failed: {e}")
+                self.use_ai = False
+        else:
+            print("ℹ️  Using regex-only mode (OpenAI not configured)")
+
     # Command patterns
     PATTERNS = {
         'greeting': [
@@ -215,6 +242,73 @@ class MessageParser:
         'warm springs': 'WARM'
     }
     
+    def _parse_with_ai(self, message: str) -> Optional[Dict]:
+        """
+        Use OpenAI to parse complex messages that don't match regex patterns
+
+        Args:
+            message: User's message text
+
+        Returns:
+            Parsed result dict or None if AI is unavailable
+        """
+        if not self.use_ai or not self.openai_client:
+            return None
+
+        try:
+            # Build the prompt for OpenAI
+            system_prompt = """You are a BART (Bay Area Rapid Transit) bot assistant. Parse user messages to extract:
+1. intent: One of [greeting, find_station, get_departures, plan_route, start_trip, stop_trip, create_profile, list_profiles, help, status, get_directions, find_bus_stop, find_transit, unknown]
+2. entities: Extract station names, preferences, etc.
+3. confidence: 0.0 to 1.0
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "intent": "intent_name",
+  "confidence": 0.95,
+  "entities": {
+    "origin": "EMBR",
+    "destination": "DBRK"
+  }
+}
+
+BART stations include: Embarcadero (EMBR), Montgomery (MONT), Powell (POWL), Berkeley (DBRK), North Berkeley (NBRK), SFO Airport (SFIA), etc.
+Handle typos, slang, and natural language. Extract station names even with spelling errors."""
+
+            user_prompt = f"Parse this message: {message}"
+
+            # Call OpenAI API
+            response = self.openai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.3,
+                max_tokens=200
+            )
+
+            # Extract and parse the response
+            content = response.choices[0].message.content.strip()
+
+            # Parse JSON response
+            result = json.loads(content)
+
+            # Add original message
+            result['original_message'] = message
+            result['ai_parsed'] = True
+
+            print(f"[AI] Parsed '{message}' → {result['intent']} (confidence: {result['confidence']})")
+
+            return result
+
+        except json.JSONDecodeError as e:
+            print(f"[AI] JSON parsing error: {e}")
+            return None
+        except Exception as e:
+            print(f"[AI] Error: {e}")
+            return None
+
     def parse(self, message: str) -> Dict:
         """
         Parse a user message
@@ -258,7 +352,13 @@ class MessageParser:
                     print(f"Error matching pattern {pattern}: {e}")
                     continue
         
-        # No pattern matched - unknown intent
+        # No pattern matched - try AI parsing if available
+        if self.use_ai:
+            ai_result = self._parse_with_ai(message)
+            if ai_result:
+                return ai_result
+
+        # No pattern matched and AI unavailable or failed
         return {
             'intent': 'unknown',
             'confidence': 0.0,
