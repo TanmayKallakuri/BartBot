@@ -125,7 +125,7 @@ class BARTBot:
         db = SessionLocal()
         try:
             user = db.query(User).filter_by(whatsapp_number=whatsapp_number).first()
-            
+
             if not user:
                 user = User(whatsapp_number=whatsapp_number)
                 db.add(user)
@@ -134,7 +134,11 @@ class BARTBot:
             else:
                 user.update_last_active()
                 db.commit()
-            
+                db.refresh(user)
+
+            # Make the object independent of the session by loading all attributes
+            db.expunge(user)
+
             return user
         finally:
             db.close()
